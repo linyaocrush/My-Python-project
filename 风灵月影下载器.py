@@ -1,23 +1,3 @@
-"""
-FLiNG Trainer 猫娘下载器 - Aurora Mint Glassmorphism（CustomTkinter）
---------------------------------------------------------------------
-修复：
-- CustomTkinter 的 place() 不能传 width/height：改用 grid 布局，并把 width/height 放到构造/configure。
-- GlassCard 阴影层 place 不再传 width/height（改用 configure 后 place）。
-
-新增设置项：
-- 是否自动解压（默认开）
-- 是否解压后删除压缩包（默认关）
-
-依赖：
-  pip install customtkinter requests beautifulsoup4
-
-可选解压依赖：
-- 7z：pip install py7zr
-- rar：pip install rarfile （并确保系统有 unrar/bsdtar）
-
-"""
-
 from __future__ import annotations
 
 import json

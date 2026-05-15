@@ -213,33 +213,33 @@ class CacheManager:
             logger.error(f"清除缓存失败: {e}")
 
 # 启动屏类
-class LoadingScreen:
-    def __init__(self):
-        self.window = ctk.CTk()
-        self.window.title("猫娘视频下载器 - 加载中...")
-        self.window.geometry("400x300")
-        self.window.configure(fg_color="#FFF0F5")
-        self.window.overrideredirect(True)  # 无边框
+class LoadingScreen(ctk.CTkToplevel):
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.title("猫娘视频下载器 - 加载中...")
+        self.geometry("400x300")
+        self.configure(fg_color="#FFF0F5")
+        self.overrideredirect(True)  # 无边框
         
         # 居中显示
-        screen_width = self.window.winfo_screenwidth()
-        screen_height = self.window.winfo_screenheight()
+        screen_width = self.winfo_screenwidth()
+        screen_height = self.winfo_screenheight()
         x = (screen_width - 400) // 2
         y = (screen_height - 300) // 2
-        self.window.geometry(f"400x300+{x}+{y}")
+        self.geometry(f"400x300+{x}+{y}")
         
         self.loading_queue = queue.Queue()
         self.is_loading = True
         self.after_ids = []  # 存储所有after回调的ID
         
         # 窗口销毁时的回调
-        self.window.protocol("WM_DELETE_WINDOW", self.close)
+        self.protocol("WM_DELETE_WINDOW", self.close)
         
         self.setup_ui()
         
     def setup_ui(self):
         # 主框架
-        main_frame = ctk.CTkFrame(self.window, fg_color="transparent")
+        main_frame = ctk.CTkFrame(self, fg_color="transparent")
         main_frame.pack(expand=True, fill="both", padx=30, pady=30)
         
         # 标题
@@ -288,8 +288,8 @@ class LoadingScreen:
     def safe_after(self, ms, func):
         """安全的after方法，记录回调ID"""
         try:
-            if self.window and self.window.winfo_exists():
-                after_id = self.window.after(ms, func)
+            if self and self.winfo_exists():
+                after_id = self.after(ms, func)
                 self.after_ids.append(after_id)
                 return after_id
         except Exception as e:
@@ -300,15 +300,15 @@ class LoadingScreen:
         """取消所有after回调"""
         try:
             for after_id in self.after_ids:
-                if self.window and self.window.winfo_exists():
-                    self.window.after_cancel(after_id)
+                if self and self.winfo_exists():
+                    self.after_cancel(after_id)
             self.after_ids.clear()
         except Exception as e:
             logger.error(f"取消after回调错误: {e}")
     
     def animate_neko(self):
         try:
-            if not self.is_loading or not self.window or not self.window.winfo_exists():
+            if not self.is_loading or not self or not self.winfo_exists():
                 return
             
             current_frame = self.neko_frames[0]
@@ -320,14 +320,14 @@ class LoadingScreen:
     
     def update_progress(self, value, status=""):
         try:
-            if self.is_loading and self.window and self.window.winfo_exists():
+            if self.is_loading and self and self.winfo_exists():
                 self.loading_queue.put((value, status))
         except Exception as e:
             logger.error(f"更新进度错误: {e}")
         
     def process_updates(self):
         try:
-            if not self.is_loading or not self.window or not self.window.winfo_exists():
+            if not self.is_loading or not self or not self.winfo_exists():
                 return
             
             try:
@@ -339,7 +339,7 @@ class LoadingScreen:
             except queue.Empty:
                 pass
             
-            if self.is_loading and self.window and self.window.winfo_exists():
+            if self.is_loading and self and self.winfo_exists():
                 self.safe_after(100, self.process_updates)
         except Exception as e:
             logger.error(f"处理更新错误: {e}")
@@ -350,11 +350,11 @@ class LoadingScreen:
         try:
             # 1. 停止所有 CustomTkinter 的后台定时任务
             self.cancel_all_after() # 确保取消所有定时器
-            self.window.withdraw() # 先隐藏窗口，防止用户再次操作
+            self.withdraw() # 先隐藏窗口，防止用户再次操作
             
             # 2. 强力销毁 Tcl 解释器
-            self.window.quit()
-            self.window.destroy()
+            self.quit()
+            self.destroy()
             
             # 3. 给系统一点点时间（0.1秒）彻底清理内存
             import time
@@ -1587,6 +1587,10 @@ class NekoDownloader (ctk .CTk ):
         ctk .CTkLabel (self .fmt_frame ,text ="✨ 定制流媒体",font =FONT_B ,text_color =CURRENT_THEME ["accent"]).pack (anchor ="w",padx =10 ,pady =5 )
         self .c_video =ctk .CTkComboBox (self .fmt_frame ,values =["请解析"],font =FONT_N ,height =32 ,command =self .on_main_video_select );self .c_video .pack (fill ="x",padx =10 ,pady =5 )
         self .c_audio =ctk .CTkComboBox (self .fmt_frame ,values =["请解析"],font =FONT_N ,height =32 );self .c_audio .pack (fill ="x",padx =10 ,pady =5 )
+        # 手动挑选模式的字幕选择框（包含"不下载字幕"选项）
+        self .c_subtitle_manual =ctk .CTkComboBox (self .fmt_frame ,values =["不下载字幕"],font =FONT_N ,height =32 )
+        # 字幕模式的字幕选择框（不包含"不下载字幕"选项）
+        self .c_subtitle_only =ctk .CTkComboBox (self .fmt_frame ,values =["下载所有字幕"],font =FONT_N ,height =32 )
 
         self .chat_frame =ctk .CTkFrame (self .left_panel ,fg_color =CURRENT_THEME ["main_bg"],corner_radius =10 )
         ctk .CTkLabel (self .chat_frame ,text ="主人喵~ 想抓哪些聊天碎片？",font =FONT_S ,text_color =CURRENT_THEME ["text"]).pack (anchor ="w",padx =10 ,pady =(5 ,0 ))
@@ -1616,18 +1620,62 @@ class NekoDownloader (ctk .CTk ):
         if self .cfg ["playlist"]:self .sw_list .select ()
         if self .cfg ["embed"]:self .sw_embed .select ()
 
-        net =ctk .CTkFrame (self .left_panel ,fg_color ="transparent");net .pack (fill ="x",padx =20 ,pady =5 )
-        self .sw_proxy =ctk .CTkSwitch (net ,text ="魔法通道",font =FONT_N ,progress_color =CURRENT_THEME ["accent"],command =self .upd_ui ,text_color =CURRENT_THEME ["text"]);self .sw_proxy .pack (side ="left")
+        self .net =ctk .CTkFrame (self .left_panel ,fg_color ="transparent");self .net .pack (fill ="x",padx =20 ,pady =5 )
+        self .sw_proxy =ctk .CTkSwitch (self .net ,text ="魔法通道",font =FONT_N ,progress_color =CURRENT_THEME ["accent"],command =self .upd_ui ,text_color =CURRENT_THEME ["text"]);self .sw_proxy .pack (side ="left")
         pip ,ppt =("","")
         if ":"in self .cfg ["proxy"]:pip ,ppt =self .cfg ["proxy"].split (":")[:2 ]
         else :pip =self .cfg ["proxy"]
-        self .e_proxy_ip =ctk .CTkEntry (net ,placeholder_text ="127.0.0.1",width =130 ,height =30 ,font =FONT_N ,fg_color =CURRENT_THEME ["panel_bg"],text_color =CURRENT_THEME ["text"]);self .e_proxy_ip .insert (0 ,pip );self .e_proxy_ip .pack (side ="left",padx =(10 ,2 ))
-        ctk .CTkLabel (net ,text =":",font =FONT_B ,text_color =CURRENT_THEME ["text"]).pack (side ="left")
-        self .e_proxy_port =ctk .CTkEntry (net ,placeholder_text ="7890",width =70 ,height =30 ,font =FONT_N ,fg_color =CURRENT_THEME ["panel_bg"],text_color =CURRENT_THEME ["text"]);self .e_proxy_port .insert (0 ,ppt );self .e_proxy_port .pack (side ="left",padx =(2 ,10 ))
-        ctk .CTkLabel (net ,text ="⚡并发:",font =FONT_S ,text_color =CURRENT_THEME ["text"]).pack (side ="left",padx =(15 ,2 ))
-        self .c_concurrent =ctk .CTkComboBox (net ,values =["1","2","3","4","5"],width =60 ,state ="readonly",command =lambda v :setattr (self ,'max_concurrent',int (v )),fg_color =CURRENT_THEME ["panel_bg"],text_color =CURRENT_THEME ["text"]);self .c_concurrent .set ("2");self .c_concurrent .pack (side ="left")
-        self .c_cookie =ctk .CTkComboBox (net ,values =["🚫 No Cookie"],width =150 ,height =30 ,font =FONT_N ,fg_color =CURRENT_THEME ["panel_bg"],text_color =CURRENT_THEME ["text"]);self .c_cookie .pack (side ="right")
+        self .e_proxy_ip =ctk .CTkEntry (self .net ,placeholder_text ="127.0.0.1",width =130 ,height =30 ,font =FONT_N ,fg_color =CURRENT_THEME ["panel_bg"],text_color =CURRENT_THEME ["text"]);self .e_proxy_ip .insert (0 ,pip );self .e_proxy_ip .pack (side ="left",padx =(10 ,2 ))
+        ctk .CTkLabel (self .net ,text =":",font =FONT_B ,text_color =CURRENT_THEME ["text"]).pack (side ="left")
+        self .e_proxy_port =ctk .CTkEntry (self .net ,placeholder_text ="7890",width =70 ,height =30 ,font =FONT_N ,fg_color =CURRENT_THEME ["panel_bg"],text_color =CURRENT_THEME ["text"]);self .e_proxy_port .insert (0 ,ppt );self .e_proxy_port .pack (side ="left",padx =(2 ,10 ))
+        ctk .CTkLabel (self .net ,text ="⚡并发:",font =FONT_S ,text_color =CURRENT_THEME ["text"]).pack (side ="left",padx =(15 ,2 ))
+        self .c_concurrent =ctk .CTkComboBox (self .net ,values =["1","2","3","4","5"],width =60 ,state ="readonly",command =lambda v :setattr (self ,'max_concurrent',int (v )),fg_color =CURRENT_THEME ["panel_bg"],text_color =CURRENT_THEME ["text"]);self .c_concurrent .set ("2");self .c_concurrent .pack (side ="left")
+        self .c_cookie =ctk .CTkComboBox (self .net ,values =["🚫 No Cookie"],width =150 ,height =30 ,font =FONT_N ,fg_color =CURRENT_THEME ["panel_bg"],text_color =CURRENT_THEME ["text"]);self .c_cookie .pack (side ="right")
         if self .cfg ["proxy_on"]:self .sw_proxy .select ()
+        
+        # 创建浏览器选择器框架
+        self .browser_frame =ctk .CTkFrame (self .left_panel ,fg_color ="transparent")
+        # 配置网格权重
+        self .browser_frame .columnconfigure (0 ,weight =1 )
+        self .browser_frame .columnconfigure (1 ,weight =1 )
+        
+        # 左侧部分：标签与说明
+        left_part =ctk .CTkFrame (self .browser_frame ,fg_color ="transparent")
+        left_part .grid (row =0 ,column =0 ,sticky ="nsew",padx =(0 ,5 ))
+        
+        ctk .CTkLabel (
+            left_part ,
+            text ="🌐 浏览器 Cookie 授权",
+            font =FONT_B ,
+            text_color =CURRENT_THEME ["text"],
+            anchor ="w"
+        ).pack (fill ="x")
+        
+        ctk .CTkLabel (
+            left_part ,
+            text ="选择已登录视频网站的浏览器以获取会员权限",
+            font =FONT_S ,
+            text_color ="gray",
+            anchor ="w"
+        ).pack (fill ="x")
+        
+        # 右侧部分：选择器与操作
+        right_part =ctk .CTkFrame (self .browser_frame ,fg_color ="transparent")
+        right_part .grid (row =0 ,column =1 ,sticky ="nsew",padx =(5 ,0 ))
+        
+        # 浏览器下拉框
+        self .c_browser =ctk .CTkComboBox (
+            right_part ,
+            values =["chrome","firefox","edge","safari"],
+            width =120 ,
+            font =FONT_N ,
+            fg_color =CURRENT_THEME ["panel_bg"],
+            text_color =CURRENT_THEME ["text"]
+        )
+        self .c_browser .pack (side ="left",fill ="x",expand =True ,padx =(0 ,5 ))
+        
+        # 绑定cookie选择框的变化事件
+        self .c_cookie .configure (command =self .update_browser_selector )
 
         self .time_frame =ctk .CTkFrame (self .left_panel ,fg_color ="transparent");self .time_frame .pack (fill ="x",padx =20 ,pady =5 )
         self .switch_time =ctk .CTkSwitch (self .time_frame ,text ="✂️ 片段下载",font =FONT_N ,progress_color =CURRENT_THEME ["accent"],text_color =CURRENT_THEME ["text"],command =self .upd_ui );self .switch_time .pack (side ="left",padx =(0 ,10 ))
@@ -1803,10 +1851,46 @@ class NekoDownloader (ctk .CTk ):
 
         m =self .seg_mode .get ()
         self .sw_embed .configure (state ="normal"if "最佳"in m or "手动"in m else "disabled")
-        if "手动"in m :
+        if "手动"in m or "字幕"in m :
             self .fmt_frame .pack (after =self .preview_frame ,fill ="x",padx =20 ,pady =10 )
             st ="normal"if self .current_meta else "disabled"
-            self .c_video .configure (state =st );self .c_audio .configure (state =st )
+            
+            if "字幕"in m :
+                # 字幕模式：只显示字幕选择框
+                self .c_video .pack_forget ()
+                self .c_audio .pack_forget ()
+                if hasattr(self, 'c_subtitle_manual'):
+                    self .c_subtitle_manual .pack_forget ()
+                if hasattr(self, 'c_subtitle_only'):
+                    self .c_subtitle_only .pack (fill ="x",padx =10 ,pady =5 )
+                    if hasattr(self, 'subtitle_opts'):
+                        if self.subtitle_opts:
+                            subtitle_labels = [opt[1] for opt in self.subtitle_opts]
+                            self.c_subtitle_only.configure(values=subtitle_labels)
+                            self.c_subtitle_only.set(subtitle_labels[0])
+                        else:
+                            self.c_subtitle_only.configure(values=["下载所有字幕"])
+                            self.c_subtitle_only.set("下载所有字幕")
+            else :
+                # 手动模式：显示所有选择框
+                if hasattr(self, 'c_video'):
+                    self .c_video .pack (fill ="x",padx =10 ,pady =5 )
+                if hasattr(self, 'c_audio'):
+                    self .c_audio .pack (fill ="x",padx =10 ,pady =5 )
+                if hasattr(self, 'c_subtitle_only'):
+                    self .c_subtitle_only .pack_forget ()
+                if hasattr(self, 'c_subtitle_manual'):
+                    self .c_subtitle_manual .pack (fill ="x",padx =10 ,pady =5 )
+                    # 手动模式：显示"不下载字幕"和"下载全部字幕"选项
+                    if hasattr(self, 'subtitle_opts') and self.subtitle_opts:
+                        subtitle_labels = ["不下载字幕", "下载全部字幕"] + [opt[1] for opt in self.subtitle_opts]
+                        self.c_subtitle_manual.configure(values=subtitle_labels)
+                        self.c_subtitle_manual.set("不下载字幕")
+                    else:
+                        self.c_subtitle_manual.configure(values=["不下载字幕", "下载全部字幕"])
+                        self.c_subtitle_manual.set("不下载字幕")
+                self .c_video .configure (state =st )
+                self .c_audio .configure (state =st )
         else :self .fmt_frame .pack_forget ()
         if "聊天室"in m :
             self .chat_frame .pack (after =self .preview_frame ,fill ="x",padx =20 ,pady =10 )
@@ -1848,9 +1932,18 @@ class NekoDownloader (ctk .CTk ):
         if p :self .e_dir .delete (0 ,"end");self .e_dir .insert (0 ,p )
 
     def refresh_cookies (self ):
-        fs =["🚫 No Cookie"]+([f for f in os .listdir (COOKIES_DIR )if f .endswith ('.txt')]if os .path .exists (COOKIES_DIR )else [])
+        fs =["🚫 No Cookie","🔄 使用内置提取器"]+([f for f in os .listdir (COOKIES_DIR )if f .endswith ('.txt')]if os .path .exists (COOKIES_DIR )else [])
         self .c_cookie .configure (values =fs )
         self .c_cookie .set (self .cfg ["cookie"]if self .cfg ["cookie"]in fs else "🚫 No Cookie")
+        self .update_browser_selector ()
+
+    def update_browser_selector (self ,*args ):
+        # 根据cookie选择状态显示或隐藏浏览器选择器
+        if self .c_cookie .get ()=="🔄 使用内置提取器":
+            # 放在net框架下方
+            self .browser_frame .pack (fill ="x",padx =20 ,pady =5 ,after =self .net )
+        else :
+            self .browser_frame .pack_forget ()
 
     def log (self ,msg ,mood ="happy"):
         def _log():
@@ -1884,8 +1977,14 @@ class NekoDownloader (ctk .CTk ):
         if not shutil .which ("ffmpeg")and self .cfg .get ('ffmpeg_path'):cmd .extend (["--ffmpeg-location",self .cfg ['ffmpeg_path']])
         if pon and pip and ppt :cmd .extend (["--proxy",f"http://{pip}:{ppt}"])
         if "🚫"not in ck :
-            cp =os .path .join (COOKIES_DIR ,ck )
-            if os .path .exists (cp ):cmd .extend (["--cookies",cp ])
+            if ck =="🔄 使用内置提取器":
+                # 使用内置提取器
+                browser =self .c_browser .get ()if hasattr (self ,'c_browser')else "chrome"
+                cmd .extend (["--cookies-from-browser",browser ])
+            else :
+                # 使用传统cookie文件
+                cp =os .path .join (COOKIES_DIR ,ck )
+                if os .path .exists (cp ):cmd .extend (["--cookies",cp ])
         return cmd 
 
     @safe_run 
@@ -1895,6 +1994,7 @@ class NekoDownloader (ctk .CTk ):
         c =self .run_safe (gc )
         self .run_safe (lambda :[self .l_info .configure (text ="Connecting..."),self .l_thumb .configure (image =None ,text ="...")])
         self .video_opts .clear ();self .audio_opts .clear ();self .video_infos .clear ()
+        self .subtitle_opts =[]  # 存储字幕语言选项
 
         si =subprocess .STARTUPINFO ();si .dwFlags |=subprocess .STARTF_USESHOWWINDOW 
         cmd =self .get_cmd_base (c ["pon"],c ["pip"],c ["ppt"],c ["ck"])
@@ -1959,6 +2059,51 @@ class NekoDownloader (ctk .CTk ):
                     label =f"{int(abr)}k | {ext} | {ac} | ID:{fid}"
                     a_list .append ({'abr':abr ,'label':label ,'id':fid })
 
+        # 解析字幕语言
+        self .log ("Checking subtitles...","working")
+        try:
+            # 使用 --list-subs 命令获取字幕信息
+            subs_cmd = cmd + ["--list-subs", url]
+            subs_res = subprocess.run(subs_cmd, capture_output=True, text=True, 
+                                   encoding='utf-8', errors='replace', 
+                                   startupinfo=si, 
+                                   creationflags=subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0, 
+                                   env={**os.environ, "PYTHONIOENCODING": "utf-8"})
+            
+            if subs_res.returncode == 0:
+                subs_output = subs_res.stdout
+                # 解析字幕信息
+                lines = subs_output.strip().split('\n')
+                for line in lines:
+                    line = line.strip()
+                    if line and not line.startswith('['):
+                        # 格式示例: "zh-Hans" (Chinese (Simplified)) -- [VTT] (automatic)
+                        parts = line.split(' -- ')
+                        if len(parts) >= 2:
+                            lang_info = parts[0].strip()
+                            sub_info = parts[1].strip()
+                            # 提取语言代码和名称
+                            lang_match = re.search(r'"([^"]+)"\s+\(([^\)]+)\)', lang_info)
+                            if lang_match:
+                                lang_code = lang_match.group(1)
+                                lang_name = lang_match.group(2)
+                                # 检查是否是自动生成的
+                                is_auto = 'automatic' in sub_info.lower()
+                                label = f"{lang_name} ({lang_code})"
+                                if is_auto:
+                                    label += " [自动]"
+                                else:
+                                    label += " [手动]"
+                                self.subtitle_opts.append((lang_code, label, is_auto))
+                
+                if self.subtitle_opts:
+                    self.log(f"Found {len(self.subtitle_opts)} subtitle languages","happy")
+                else:
+                    self.log("No subtitles found","sad")
+        except Exception as e:
+            logger.error(f"Error parsing subtitles: {e}")
+            self.log("Failed to check subtitles","sad")
+
         v_list .sort (key =lambda x :(x ['h'],x ['br']),reverse =True )
         a_list .sort (key =lambda x :x ['abr'],reverse =True )
         v_labels =[x ['label']for x in v_list ]
@@ -1969,7 +2114,11 @@ class NekoDownloader (ctk .CTk ):
             if tr :
                 self .current_thumb_img =ctk .CTkImage (Image .open (io .BytesIO (tr )),size =(160 ,90 ))
                 self .l_thumb .configure (image =self .current_thumb_img ,text ="")
-            else :self .current_thumb_img =None ;self .l_thumb .configure (image =None ,text ="No Image")
+                self .l_thumb .image =self .current_thumb_img  # 双重保险，防止图片被垃圾回收
+            else :
+                self .current_thumb_img =None 
+                self .l_thumb .configure (image =None ,text ="No Image")
+                self .l_thumb .image =None  # 清除引用
 
             self .video_opts ={x ['label']:x ['id']for x in v_list }
             self .audio_opts ={x ['label']:x ['id']for x in a_list }
@@ -1980,6 +2129,18 @@ class NekoDownloader (ctk .CTk ):
             if v_labels :self .c_video .set (v_labels [0 ])
             if a_labels :self .c_audio .set (a_labels [0 ])
             self .on_main_video_select (self .c_video .get ())
+
+            # 更新字幕选择框
+            if hasattr(self, 'c_subtitle'):
+                m = self.seg_mode.get() if hasattr(self, 'seg_mode') else ""
+                if self.subtitle_opts:
+                    # 所有模式都添加"不下载字幕"选项
+                    subtitle_labels = ["不下载字幕"] + [opt[1] for opt in self.subtitle_opts]
+                    self.c_subtitle.configure(values=subtitle_labels)
+                    self.c_subtitle.set("不下载字幕")
+                else:
+                    self.c_subtitle.configure(values=["不下载字幕"])
+                    self.c_subtitle.set("不下载字幕")
 
             self .l_info .configure (text =f"Title: {d.get('title','?')}\nUP: {d.get('uploader','?')}")
             if 'entries'in d or d .get ('_type')=='playlist':self .sw_list .select ()
@@ -2096,11 +2257,44 @@ class NekoDownloader (ctk .CTk ):
                 "thumbnail": None
             }
 
+        # 获取选中的字幕语言
+        selected_subtitle = ""
+        is_subtitle_mode = "字幕" in m
+        if is_subtitle_mode:
+            # 字幕模式：使用 c_subtitle_only
+            selected_subtitle = self.c_subtitle_only.get() if hasattr(self, 'c_subtitle_only') else "下载所有字幕"
+        else:
+            # 手动模式：使用 c_subtitle_manual
+            selected_subtitle = self.c_subtitle_manual.get() if hasattr(self, 'c_subtitle_manual') else "不下载字幕"
+        
+        subtitle_lang = None
+        if not is_subtitle_mode:
+            if selected_subtitle == "不下载字幕":
+                subtitle_lang = None
+            elif selected_subtitle == "下载全部字幕":
+                # 下载全部字幕：不指定语言代码，让 yt-dlp 下载所有字幕
+                subtitle_lang = "all"
+            else:
+                if hasattr(self, 'subtitle_opts') and self.subtitle_opts:
+                    for lang_code, label, is_auto in self.subtitle_opts:
+                        if label == selected_subtitle:
+                            subtitle_lang = lang_code
+                            break
+        else:
+            if hasattr(self, 'subtitle_opts') and self.subtitle_opts:
+                for lang_code, label, is_auto in self.subtitle_opts:
+                    if label == selected_subtitle:
+                        subtitle_lang = lang_code
+                        break
+
+        # 获取浏览器选择器的值
+        browser =self .c_browser .get ()if hasattr (self ,'c_browser')else "chrome"
+        
         return {
         "url":self .current_meta .get ("webpage_url",self .e_url .get ()),
         "dir":self .e_dir .get (),"mode":m ,"proxy_on":self .sw_proxy .get (),
         "proxy_ip":self .e_proxy_ip .get (),"proxy_port":self .e_proxy_port .get (),
-        "cookie":self .c_cookie .get (),"playlist":self .sw_list .get (),"embed":self .sw_embed .get (),
+        "cookie":self .c_cookie .get (),"browser":browser ,"playlist":self .sw_list .get (),"embed":self .sw_embed .get (),
         "sb_act":self .c_sponsor_action .get (),"sb_cats":self .current_sponsor_cats ,
         "v_id":self .video_opts .get (self .c_video .get ()),"a_id":aid ,
         "tmpl_on":self .cfg ["tmpl_on"],"tmpl_str":self .cfg ["tmpl_str"],
@@ -2109,7 +2303,8 @@ class NekoDownloader (ctk .CTk ):
         "chat_filters":self .chat_filters if hasattr (self ,'chat_filters')else ["author","message","timestamp"],
         "time_range_on":self .switch_time .get (),
         "start_h":self .e_start_h .get (),"start_m":self .e_start_m .get (),"start_s":self .e_start_s .get (),
-        "end_h":self .e_end_h .get (),"end_m":self .e_end_m .get (),"end_s":self .e_end_s .get ()
+        "end_h":self .e_end_h .get (),"end_m":self .e_end_m .get (),"end_s":self .e_end_s .get (),
+        "subtitle_lang":subtitle_lang
         }," ".join (desc )
 
     def process_queue (self ):
@@ -2168,6 +2363,17 @@ class NekoDownloader (ctk .CTk ):
 
         output_template =cfg ['tmpl_str']if cfg ['tmpl_on']else "%(title)s.%(ext)s"
 
+        # 获取浏览器选择器的值
+        if not hasattr (self ,'c_browser'):
+            # 如果浏览器选择器还未创建，创建它
+            self .update_browser_selector ()
+        
+        # 确保浏览器选择器的值被正确设置
+        if 'browser' in cfg:
+            browser = cfg['browser']
+            if hasattr (self ,'c_browser'):
+                self .c_browser .set (browser )
+        
         cmd =self .get_cmd_base (cfg ["proxy_on"],cfg ["proxy_ip"],cfg ["proxy_port"],cfg ["cookie"])
         cmd .extend ([
         "--continue",
@@ -2183,7 +2389,12 @@ class NekoDownloader (ctk .CTk ):
         elif "Remove"in sb :cmd .extend (["--sponsorblock-remove","all"])
 
         m =cfg ["mode"]
-        if "字幕"in m :cmd .extend (["--skip-download","--write-subs","--write-auto-subs"])
+        if "字幕"in m :
+            cmd .extend (["--skip-download","--write-subs","--write-auto-subs"])
+            # 添加字幕语言选择
+            subtitle_lang = cfg.get("subtitle_lang")
+            if subtitle_lang and subtitle_lang != "all":
+                cmd.extend(["--sub-langs", subtitle_lang])
         elif "声音"in m :cmd .extend (["-f","bestaudio/best","--extract-audio","--audio-format","mp3"])
         elif "直播"in m :cmd .extend (["--wait-for-video","15","--live-from-start"])
         elif "聊天室"in m :
@@ -2195,7 +2406,12 @@ class NekoDownloader (ctk .CTk ):
             else :cmd .extend (["-f","bestvideo+bestaudio/best"])
         else :cmd .extend (["-f","bestvideo+bestaudio/best"])
 
-        if cfg .get ("embed"):cmd .extend (["--write-subs","--write-auto-subs","--embed-subs"])
+        if cfg .get ("embed"):
+            subtitle_lang = cfg.get("subtitle_lang")
+            if subtitle_lang:
+                cmd .extend (["--write-subs","--write-auto-subs","--embed-subs"])
+                if subtitle_lang != "all":
+                    cmd.extend(["--sub-langs", subtitle_lang])
 
         if cfg .get ("time_range_on"):
             start_str =f"{cfg.get('start_h', '00')}:{cfg.get('start_m', '00')}:{cfg.get('start_s', '00')}"
@@ -2350,7 +2566,11 @@ class UILoader:
         self.error_message = None
         
     def start_loading(self):
-        self.loading_screen = LoadingScreen()
+        # 创建临时root窗口作为LoadingScreen的父窗口
+        temp_root = ctk.CTk()
+        temp_root.withdraw()  # 隐藏临时窗口
+        
+        self.loading_screen = LoadingScreen(temp_root)
         
         # 启动加载线程
         threading.Thread(target=self._prepare_app, daemon=True).start()
@@ -2361,7 +2581,13 @@ class UILoader:
         self.check_loading_status()
         
         # 进入加载屏的主循环
-        self.loading_screen.window.mainloop()
+        self.loading_screen.mainloop()
+        
+        # 销毁临时root窗口
+        try:
+            temp_root.destroy()
+        except:
+            pass
         
         # --- 关键修改：确保加载屏完全消失后再判断是否启动主程序 ---
         if self.error_message:
@@ -2384,8 +2610,8 @@ class UILoader:
         if self.loading_completed:
             self.loading_screen.close() # 这会触发 mainloop 停止
         else:
-            if self.loading_screen.window.winfo_exists():
-                self.loading_screen.window.after(100, self.check_loading_status)
+            if self.loading_screen.winfo_exists():
+                self.loading_screen.after(100, self.check_loading_status)
         
     def _prepare_app(self):
         """准备应用数据"""
@@ -2495,7 +2721,7 @@ class UILoader:
     
     def update_progress_safe(self, value, status=""):
         """安全更新进度"""
-        if self.loading_screen and self.loading_screen.window:
+        if self.loading_screen:
             try:
                 # 使用后端的 queue 传递
                 self.loading_screen.update_progress(value, status)
